@@ -1,12 +1,26 @@
+import { StyleSheet, View } from 'react-native';
+
 import { AppHeader } from '../components/ui/AppHeader';
-import { AppText } from '../components/ui/AppText';
+import { EmptyState } from '../components/ui/EmptyState';
 import { Screen } from '../components/ui/Screen';
 
 export function OrdersScreen() {
   return (
     <Screen>
       <AppHeader />
-      <AppText style={{ fontSize: 16, color: '#4B5563' }}>Orders content placeholder.</AppText>
+      <View style={styles.contentWrap}>
+        <EmptyState
+          title="No orders yet"
+          description="Your placed orders will appear here once you checkout from cart."
+        />
+      </View>
     </Screen>
   );
 }
+
+const styles = StyleSheet.create({
+  contentWrap: {
+    flex: 1,
+    paddingBottom: 8,
+  },
+});

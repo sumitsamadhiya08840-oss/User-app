@@ -2,6 +2,8 @@ import { StyleSheet, View } from 'react-native';
 
 import { AppButton } from '../components/ui/AppButton';
 import { AppText } from '../components/ui/AppText';
+import { Chip } from '../components/ui/Chip';
+import { Divider } from '../components/ui/Divider';
 import { Screen } from '../components/ui/Screen';
 import { useCity } from '../contexts/CityContext';
 
@@ -20,19 +22,19 @@ export function CitySelectionScreen() {
   return (
     <Screen scroll>
       <AppText style={styles.title}>Choose Your City</AppText>
-      <AppText style={styles.subtitle}>
-        Service is currently available in select locations.
-      </AppText>
+      <AppText style={styles.subtitle}>Service is currently available in select locations.</AppText>
 
       <View style={styles.activeSection}>
         <AppButton title="Gwalior" onPress={handleSelectGwalior} />
+        <AppText style={styles.activeNote}>Currently live in Gwalior</AppText>
       </View>
 
       <View style={styles.comingSoonSection}>
+        <Divider spacingVertical={6} />
         <AppText style={styles.comingSoonTitle}>Coming Soon</AppText>
-        <View style={styles.buttonGroup}>
+        <View style={styles.chipGroup}>
           {COMING_SOON_CITIES.map((city) => (
-            <AppButton key={city} title={city} variant="ghost" disabled />
+            <Chip key={city} label={city} variant="disabled" disabled />
           ))}
         </View>
       </View>
@@ -54,8 +56,14 @@ const styles = StyleSheet.create({
     marginTop: 32,
     gap: 12,
   },
+  activeNote: {
+    marginTop: -2,
+    fontSize: 13,
+    color: '#6B7280',
+    fontWeight: '500',
+  },
   comingSoonSection: {
-    marginTop: 40,
+    marginTop: 32,
   },
   comingSoonTitle: {
     marginBottom: 12,
@@ -63,7 +71,9 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#374151',
   },
-  buttonGroup: {
-    gap: 12,
+  chipGroup: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
   },
 });

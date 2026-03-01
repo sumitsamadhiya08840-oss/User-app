@@ -3,7 +3,10 @@ import { Image, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { AppHeader } from '../components/ui/AppHeader';
 import { AppButton } from '../components/ui/AppButton';
 import { AppText } from '../components/ui/AppText';
+import { Divider } from '../components/ui/Divider';
+import { EmptyState } from '../components/ui/EmptyState';
 import { Screen } from '../components/ui/Screen';
+import { SectionHeader } from '../components/ui/SectionHeader';
 import { useCart } from '../contexts/CartContext';
 
 export function CartScreen() {
@@ -26,17 +29,16 @@ export function CartScreen() {
       <AppHeader />
 
       <View style={styles.pageHeaderRow}>
-        <AppText style={styles.pageTitle}>My Cart</AppText>
+        <SectionHeader title="My Cart" />
         <AppText style={styles.itemCountText}>{itemCount} items</AppText>
       </View>
 
       {items.length === 0 ? (
-        <View style={styles.emptyState}>
-          <AppText style={styles.emptyEmoji}>🛒</AppText>
-          <AppText style={styles.emptyTitle}>Your cart is empty</AppText>
-          <AppText style={styles.emptySubtitle}>
-            Add products from shops to place your order.
-          </AppText>
+        <View style={styles.emptyStateWrap}>
+          <EmptyState
+            title="Your cart is empty"
+            description="Add products from shops to place your order."
+          />
         </View>
       ) : (
         <>
@@ -93,6 +95,7 @@ export function CartScreen() {
             ))}
 
             <View style={styles.billCard}>
+              <Divider spacingVertical={2} />
               <AppText style={styles.billTitle}>Bill Details</AppText>
 
               <View style={styles.billRow}>
@@ -144,35 +147,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  pageTitle: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: '#111827',
-  },
   itemCountText: {
     fontSize: 13,
     color: '#6B7280',
     fontWeight: '600',
   },
-  emptyState: {
+  emptyStateWrap: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: -40,
-  },
-  emptyEmoji: {
-    fontSize: 44,
-  },
-  emptyTitle: {
-    marginTop: 8,
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#111827',
-  },
-  emptySubtitle: {
-    marginTop: 6,
-    fontSize: 14,
-    color: '#6B7280',
+    marginTop: -24,
   },
   listContent: {
     paddingBottom: 20,

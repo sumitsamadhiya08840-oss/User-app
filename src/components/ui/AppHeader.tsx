@@ -1,10 +1,29 @@
-import { StyleSheet, View } from 'react-native';
+import { NavigationProp, ParamListBase, useNavigation } from '@react-navigation/native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
 import { useCity } from '../../contexts/CityContext';
 import { AppText } from './AppText';
 
 export function AppHeader() {
-  const { city } = useCity();
+  const navigation = useNavigation<NavigationProp<ParamListBase>>();
+  const { city, clearCity } = useCity();
+
+  const navigateToSearch = () => {
+    let currentNavigation: NavigationProp<ParamListBase> | undefined = navigation;
+
+    while (currentNavigation) {
+      const state = currentNavigation.getState();
+      if (state.routeNames.includes('Search')) {
+        currentNavigation.navigate('Search');
+        return;
+      }
+      currentNavigation = currentNavigation.getParent();
+    }
+  };
+
+  const handleLocationPress = async () => {
+    await clearCity();
+  };
 
   return (
     <View style={styles.headerShell}>
@@ -18,18 +37,22 @@ export function AppHeader() {
         </View>
       </View>
 
-      <View style={styles.locationRow}>
+      <Pressable
+        style={styles.locationRow}
+        onPress={handleLocationPress}
+        accessibilityRole="button"
+      >
         <View>
           <AppText style={styles.deliveryText}>Get it in 1 day</AppText>
           <AppText style={styles.locationText}>{city?.name ?? 'Select City'}</AppText>
         </View>
         <AppText style={styles.arrowText}>›</AppText>
-      </View>
+      </Pressable>
 
-      <View style={styles.searchBar}>
+      <Pressable style={styles.searchBar} onPress={navigateToSearch} accessibilityRole="button">
         <AppText style={styles.searchPlaceholder}>Search 18000+ products</AppText>
         <AppText style={styles.searchIcon}>🎤</AppText>
-      </View>
+      </Pressable>
     </View>
   );
 }
