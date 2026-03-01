@@ -1,6 +1,6 @@
 import { NavigationProp, ParamListBase, useFocusEffect, useNavigation } from '@react-navigation/native';
 import { useCallback, useMemo, useState } from 'react';
-import { Alert, Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { Alert, Image, Pressable, StyleSheet, TextInput, View } from 'react-native';
 
 import { NearbySettingsModal } from '../location/NearbySettingsModal';
 import { useCity } from '../../contexts/CityContext';
@@ -151,8 +151,8 @@ export function AppHeader({
     <View style={styles.headerShell}>
       <View style={styles.topRow}>
         <View style={styles.brandRow}>
-          <AppText style={styles.brandIcon}>🛒</AppText>
-          <AppText style={styles.brandText}>bigbasket</AppText>
+          <Image source={require('../../../assets/logooo.png')} style={styles.brandLogo} resizeMode="contain" />
+          <AppText style={styles.brandText}>CityBazar</AppText>
         </View>
 
         <View style={styles.iconActionsRow}>
@@ -321,16 +321,17 @@ const styles = StyleSheet.create({
   brandRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 8,
   },
-  brandIcon: {
-    fontSize: 14,
-    color: '#F97316',
+  brandLogo: {
+    width: 28,
+    height: 28,
+    borderRadius: 8,
   },
   brandText: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#D1FAE5',
+    color: '#F9FAFB',
   },
   iconActionsRow: {
     flexDirection: 'row',
