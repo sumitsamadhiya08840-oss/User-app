@@ -1,7 +1,9 @@
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { useMemo, useState } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { FlatList, Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
+import { NearbySettingsModal } from '../components/location/NearbySettingsModal';
 import { ShopCard } from '../components/shops/ShopCard';
 import { AppButton } from '../components/ui/AppButton';
 import { AppHeader } from '../components/ui/AppHeader';
@@ -11,7 +13,10 @@ import { EmptyState } from '../components/ui/EmptyState';
 import { Screen } from '../components/ui/Screen';
 import { getCategoryById } from '../constants/demoShops';
 import { HomeStackParamList } from '../navigation/types';
+import { getNearbyPrefs } from '../services/location/nearbyService';
 import { Filters, SortOption, discoverShops } from '../services/shops/shopDiscoveryService';
+import { NearbyPreferences } from '../types/location';
+import { DiscoveryShop } from '../services/shops/mockShops';
 
 type Props = NativeStackScreenProps<HomeStackParamList, 'ShopListing'>;
 
@@ -38,20 +43,47 @@ function ShopListingContent({
 }: ShopListingContentProps) {
   const [sort, setSort] = useState<SortOption>('nearest');
   const [filters, setFilters] = useState<Filters>({});
+  const [shops, setShops] = useState<DiscoveryShop[]>([]);
+  const [nearbyPrefs, setNearbyPrefs] = useState<NearbyPreferences>({
+    enabled: true,
+    radiusKm: 5,
+    updatedAt: '',
+  });
+  const [isNearbyModalOpen, setIsNearbyModalOpen] = useState(false);
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
 
   const listingTitle =
     title ?? (categoryId ? getCategoryById(categoryId)?.name : undefined) ?? 'Shops';
 
-  const shops = useMemo(
-    () =>
-      discoverShops({
+  const hasExplicitDistanceFilter = typeof filters.maxDistanceKm === 'number';
+
+  const loadNearbyPrefs = useCallback(async () => {
+    const prefs = await getNearbyPrefs();
+    setNearbyPrefs(prefs);
+  }, []);
+
+  useEffect(() => {
+    loadNearbyPrefs();
+  }, [loadNearbyPrefs]);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadNearbyPrefs();
+    }, [loadNearbyPrefs]),
+  );
+
+  useEffect(() => {
+    const hydrateShops = async () => {
+      const nextShops = await discoverShops({
         categoryId,
         sort,
         filters,
-      }),
-    [categoryId, filters, sort],
-  );
+      });
+      setShops(nextShops);
+    };
+
+    hydrateShops();
+  }, [categoryId, filters, sort, nearbyPrefs.updatedAt]);
 
   const updateFilter = <K extends keyof Filters>(key: K, value: Filters[K]) => {
     setFilters((current) => ({
@@ -70,6 +102,17 @@ function ShopListingContent({
       <View style={styles.headerBlock}>
         <AppText style={styles.title}>{listingTitle}</AppText>
         <AppText style={styles.subtitle}>{subtitle}</AppText>
+
+        {nearbyPrefs.enabled && !hasExplicitDistanceFilter ? (
+          <View style={styles.nearbyRow}>
+            <View style={styles.nearbyChip}>
+              <AppText style={styles.nearbyChipText}>Nearby: {nearbyPrefs.radiusKm}km</AppText>
+            </View>
+            <Pressable onPress={() => setIsNearbyModalOpen(true)}>
+              <AppText style={styles.nearbyChangeText}>Change</AppText>
+            </Pressable>
+          </View>
+        ) : null}
       </View>
 
       <ScrollView
@@ -213,6 +256,14 @@ function ShopListingContent({
           </Pressable>
         </Pressable>
       </Modal>
+
+      <NearbySettingsModal
+        visible={isNearbyModalOpen}
+        onClose={() => setIsNearbyModalOpen(false)}
+        onSaved={(prefs) => {
+          setNearbyPrefs(prefs);
+        }}
+      />
     </View>
   );
 }
@@ -254,6 +305,30 @@ const styles = StyleSheet.create({
     marginTop: 4,
     fontSize: 13,
     color: '#6B7280',
+  },
+  nearbyRow: {
+    marginTop: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  nearbyChip: {
+    borderWidth: 1,
+    borderColor: '#BBF7D0',
+    borderRadius: 999,
+    backgroundColor: '#ECFDF3',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+  },
+  nearbyChipText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#166534',
+  },
+  nearbyChangeText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#22A55D',
   },
   controlsRow: {
     paddingBottom: 12,

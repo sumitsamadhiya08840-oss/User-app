@@ -1,10 +1,14 @@
-import { NavigationProp, ParamListBase, useNavigation } from '@react-navigation/native';
-import { useMemo, useState } from 'react';
+import { NavigationProp, ParamListBase, useFocusEffect, useNavigation } from '@react-navigation/native';
+import { useCallback, useMemo, useState } from 'react';
 import { Alert, Pressable, StyleSheet, TextInput, View } from 'react-native';
 
+import { NearbySettingsModal } from '../location/NearbySettingsModal';
 import { useCity } from '../../contexts/CityContext';
+import { getNearbyPrefs } from '../../services/location/nearbyService';
+import { getUnreadCount, seedNotificationsIfEmpty } from '../../services/notifications/notificationService';
 import { addRecentSearch } from '../../services/search/recentSearchesService';
 import { SearchSuggestionType, searchAll } from '../../services/search/searchService';
+import { NearbyPreferences } from '../../types/location';
 import { AppText } from './AppText';
 
 type AppHeaderProps = {
@@ -29,9 +33,16 @@ export function AppHeader({
   onSearchPress,
 }: AppHeaderProps) {
   const navigation = useNavigation<NavigationProp<ParamListBase>>();
-  const { city, clearCity } = useCity();
+  const { city } = useCity();
   const [localQuery, setLocalQuery] = useState('');
   const [localMode, setLocalMode] = useState<'suggestions' | 'results'>('suggestions');
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [nearbyPrefs, setNearbyPrefs] = useState<NearbyPreferences>({
+    enabled: true,
+    radiusKm: 5,
+    updatedAt: '',
+  });
+  const [isNearbyModalVisible, setIsNearbyModalVisible] = useState(false);
 
   const isControlled = typeof onSearchChangeText === 'function';
   const activeQuery = (isControlled ? searchValue : localQuery).trim();
@@ -48,8 +59,29 @@ export function AppHeader({
     localSearchResult.products.length > 0 ||
     localSearchResult.categories.length > 0;
 
-  const handleLocationPress = async () => {
-    await clearCity();
+  const refreshHeaderMeta = useCallback(async () => {
+    await seedNotificationsIfEmpty();
+    const [count, prefs] = await Promise.all([getUnreadCount(), getNearbyPrefs()]);
+    setUnreadCount(count);
+    setNearbyPrefs(prefs);
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      refreshHeaderMeta();
+    }, [refreshHeaderMeta]),
+  );
+
+  const handleLocationPress = () => {
+    setIsNearbyModalVisible(true);
+  };
+
+  const handleNotificationsPress = () => {
+    try {
+      navigation.navigate('Home', { screen: 'Notifications' });
+    } catch {
+      navigation.navigate('Notifications');
+    }
   };
 
   const handleShopPress = async (shopId: string, shopName: string) => {
@@ -122,8 +154,20 @@ export function AppHeader({
           <AppText style={styles.brandIcon}>🛒</AppText>
           <AppText style={styles.brandText}>bigbasket</AppText>
         </View>
-        <View style={styles.profilePill}>
-          <AppText style={styles.profileIcon}>◌</AppText>
+
+        <View style={styles.iconActionsRow}>
+          <Pressable style={styles.iconButton} onPress={() => setIsNearbyModalVisible(true)}>
+            <AppText style={styles.iconButtonText}>📍</AppText>
+          </Pressable>
+
+          <Pressable style={styles.iconButton} onPress={handleNotificationsPress}>
+            <AppText style={styles.iconButtonText}>🔔</AppText>
+            {unreadCount > 0 ? (
+              <View style={styles.badge}>
+                <AppText style={styles.badgeText}>{unreadCount > 99 ? '99+' : unreadCount}</AppText>
+              </View>
+            ) : null}
+          </Pressable>
         </View>
       </View>
 
@@ -134,7 +178,14 @@ export function AppHeader({
       >
         <View>
           <AppText style={styles.deliveryText}>Get it in 1 day</AppText>
-          <AppText style={styles.locationText}>{city?.name ?? 'Select City'}</AppText>
+          <View style={styles.locationTitleRow}>
+            <AppText style={styles.locationText}>{city?.name ?? 'Select City'}</AppText>
+            {nearbyPrefs.enabled ? (
+              <View style={styles.nearbyBadge}>
+                <AppText style={styles.nearbyBadgeText}>Nearby</AppText>
+              </View>
+            ) : null}
+          </View>
         </View>
         <AppText style={styles.arrowText}>›</AppText>
       </Pressable>
@@ -242,6 +293,12 @@ export function AppHeader({
           )}
         </View>
       ) : null}
+
+      <NearbySettingsModal
+        visible={isNearbyModalVisible}
+        onClose={() => setIsNearbyModalVisible(false)}
+        onSaved={setNearbyPrefs}
+      />
     </View>
   );
 }
@@ -275,18 +332,41 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#D1FAE5',
   },
-  profilePill: {
-    width: 24,
-    height: 24,
+  iconActionsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  iconButton: {
+    width: 44,
+    height: 44,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#D1FAE5',
+    borderColor: '#E5E7EB',
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+  },
+  iconButtonText: {
+    fontSize: 18,
+  },
+  badge: {
+    position: 'absolute',
+    top: 6,
+    right: 6,
+    minWidth: 16,
+    height: 16,
+    borderRadius: 999,
+    paddingHorizontal: 3,
+    backgroundColor: '#EF4444',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  profileIcon: {
-    color: '#E5E7EB',
-    fontSize: 12,
+  badgeText: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: '#FFFFFF',
   },
   locationRow: {
     flexDirection: 'row',
@@ -304,6 +384,25 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: '#F9FAFB',
     fontWeight: '500',
+  },
+  locationTitleRow: {
+    marginTop: 2,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  nearbyBadge: {
+    borderRadius: 999,
+    backgroundColor: '#ECFDF3',
+    borderWidth: 1,
+    borderColor: '#BBF7D0',
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+  },
+  nearbyBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#166534',
   },
   arrowText: {
     color: '#F9FAFB',

@@ -1,4 +1,5 @@
 import { DiscoveryShop, mockShops } from './mockShops';
+import { getNearbyPrefs } from '../location/nearbyService';
 
 export type SortOption = 'nearest' | 'highest_rated' | 'fastest' | 'trending' | 'newest';
 
@@ -56,8 +57,19 @@ const sortMap: Record<SortOption, (left: DiscoveryShop, right: DiscoveryShop) =>
   newest: byNewest,
 };
 
-export const discoverShops = ({ categoryId, sort, filters }: DiscoverParams): DiscoveryShop[] => {
+export const discoverShops = async ({
+  categoryId,
+  sort,
+  filters,
+}: DiscoverParams): Promise<DiscoveryShop[]> => {
   let shops = [...mockShops];
+  const hasExplicitDistanceFilter = typeof filters.maxDistanceKm === 'number';
+  const nearbyPrefs = await getNearbyPrefs();
+  const effectiveMaxDistanceKm = hasExplicitDistanceFilter
+    ? filters.maxDistanceKm
+    : nearbyPrefs.enabled
+      ? nearbyPrefs.radiusKm
+      : undefined;
 
   if (categoryId) {
     shops = shops.filter((shop) => shop.categoryId === categoryId);
@@ -81,8 +93,8 @@ export const discoverShops = ({ categoryId, sort, filters }: DiscoverParams): Di
     shops = shops.filter((shop) => shop.etaMinutes <= maxEta);
   }
 
-  if (typeof filters.maxDistanceKm === 'number') {
-    const maxDistanceKm = filters.maxDistanceKm;
+  if (typeof effectiveMaxDistanceKm === 'number') {
+    const maxDistanceKm = effectiveMaxDistanceKm;
     shops = shops.filter((shop) => shop.distanceKm <= maxDistanceKm);
   }
 

@@ -1,7 +1,6 @@
 import { memo, useCallback, useMemo, useState } from 'react';
 import { FlatList, Image, Modal, Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-
 import { Product } from '../../services/products/mockProducts';
 import { useCart } from '../../contexts/CartContext';
 import { QuantityStepper } from '../cart/QuantityStepper';
@@ -327,8 +326,8 @@ const styles = StyleSheet.create({
     marginTop: 6,
     minHeight: 28,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
-    borderRadius: 10,
+    borderColor: '#D1D5DB',
+    borderRadius: 6,
     paddingHorizontal: 7,
     flexDirection: 'row',
     alignItems: 'center',
