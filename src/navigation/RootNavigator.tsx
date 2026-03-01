@@ -15,6 +15,7 @@ import { OtpVerifyScreen } from '../screens/OtpVerifyScreen';
 import { ProfileScreen } from '../screens/ProfileScreen';
 import { SearchScreen } from '../screens/SearchScreen';
 import { ShopDetailsScreen } from '../screens/ShopDetailsScreen';
+import { ShopListingScreen } from '../screens/ShopListingScreen';
 import { SplashScreen } from '../screens/SplashScreen';
 import { SubcategoryProductsScreen } from '../screens/SubcategoryProductsScreen';
 import { AuthStackParamList, HomeStackParamList, MainTabParamList } from './types';
@@ -46,6 +47,7 @@ function HomeNavigator() {
     <HomeStack.Navigator screenOptions={{ headerShown: false }}>
       <HomeStack.Screen name="HomeMain" component={HomeScreen} />
       <HomeStack.Screen name="CategoryShops" component={CategoryShopsScreen} />
+      <HomeStack.Screen name="ShopListing" component={ShopListingScreen} />
       <HomeStack.Screen name="ShopDetails" component={ShopDetailsScreen} />
       <HomeStack.Screen name="SubcategoryProducts" component={SubcategoryProductsScreen} />
     </HomeStack.Navigator>

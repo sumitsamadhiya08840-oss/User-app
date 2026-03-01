@@ -49,7 +49,12 @@ export function CartScreen() {
             {items.map((item) => (
               <View key={item.product.id} style={styles.itemCard}>
                 <Image
-                  source={{ uri: item.product.image }}
+                  source={{
+                    uri:
+                      item.product.imageUrl ??
+                      item.product.image ??
+                      `https://picsum.photos/seed/${item.product.id}/220/220`,
+                  }}
                   style={styles.itemImage}
                   resizeMode="cover"
                 />
@@ -59,12 +64,15 @@ export function CartScreen() {
                     {item.product.name}
                   </AppText>
                   <AppText style={styles.itemMeta} numberOfLines={1}>
-                    {item.product.brand} • {item.product.unit}
+                    {item.product.brand ?? 'Local shop item'}
+                    {item.product.unit ? ` • ${item.product.unit}` : ''}
                   </AppText>
 
                   <View style={styles.priceRow}>
                     <AppText style={styles.currentPrice}>₹{item.product.price}</AppText>
-                    <AppText style={styles.oldPrice}>₹{item.product.mrp}</AppText>
+                    <AppText style={styles.oldPrice}>
+                      ₹{item.product.mrp ?? item.product.price}
+                    </AppText>
                   </View>
 
                   <View style={styles.controlsRow}>

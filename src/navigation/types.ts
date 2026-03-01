@@ -7,6 +7,7 @@ export type HomeStackParamList = {
   HomeMain: undefined;
   ShopDetails: { shopId: string };
   CategoryShops: { categoryId: string };
+  ShopListing: { categoryId?: string; title?: string } | undefined;
   SubcategoryProducts: { shopId: string; subcategoryId: string };
 };
 

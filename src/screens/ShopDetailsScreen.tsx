@@ -1,382 +1,434 @@
-import { FlatList, Image, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { NavigationProp, ParamListBase, useNavigation } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useMemo, useState } from 'react';
+import { Alert, FlatList, Modal, Pressable, StyleSheet, View } from 'react-native';
 
+import { ProductCard } from '../components/products/ProductCard';
 import { AppHeader } from '../components/ui/AppHeader';
 import { AppText } from '../components/ui/AppText';
+import { Chip } from '../components/ui/Chip';
 import { Screen } from '../components/ui/Screen';
-import { getShopById, Product } from '../constants/demoShops';
 import { useCart } from '../contexts/CartContext';
 import { HomeStackParamList } from '../navigation/types';
+import { getMockProducts } from '../services/products/mockProducts';
+import { getMockShopById } from '../services/shops/mockShopDetails';
 
 type Props = NativeStackScreenProps<HomeStackParamList, 'ShopDetails'>;
 
-type ProductCardProps = {
-  product: Product;
-  quantity: number;
-  onAdd: () => void;
-  onIncrement: () => void;
-  onDecrement: () => void;
+type SortMode = 'recommended' | 'price_low_high' | 'price_high_low' | 'discount' | 'in_stock';
+
+const SORT_CHIPS: { key: SortMode; label: string }[] = [
+  { key: 'recommended', label: 'Recommended' },
+  { key: 'price_low_high', label: 'Price ↑' },
+  { key: 'price_high_low', label: 'Price ↓' },
+  { key: 'discount', label: 'Discount' },
+  { key: 'in_stock', label: 'In Stock' },
+];
+
+const getDiscountPercent = (price: number, mrp?: number) => {
+  if (!mrp || mrp <= price) {
+    return 0;
+  }
+  return ((mrp - price) / mrp) * 100;
 };
 
-function ProductCard({ product, quantity, onAdd, onIncrement, onDecrement }: ProductCardProps) {
-  return (
-    <View style={styles.productCard}>
-      <View style={styles.discountBadge}>
-        <AppText style={styles.discountText}>{product.discountLabel}</AppText>
-      </View>
-
-      <Image source={{ uri: product.image }} style={styles.productImage} resizeMode="cover" />
-
-      <View style={styles.productBody}>
-        <AppText style={styles.productBrand}>{product.brand}</AppText>
-        <AppText style={styles.productName} numberOfLines={1}>
-          {product.name}
-        </AppText>
-
-        <View style={styles.unitPill}>
-          <AppText style={styles.unitText}>{product.unit}</AppText>
-          <AppText style={styles.unitArrow}>⌄</AppText>
-        </View>
-
-        <View style={styles.priceRow}>
-          <AppText style={styles.price}>₹{product.price}</AppText>
-          <AppText style={styles.mrp}>₹{product.mrp}</AppText>
-        </View>
-
-        {quantity > 0 ? (
-          <View style={styles.quantityWrap}>
-            <Pressable style={styles.quantityButton} onPress={onDecrement}>
-              <AppText style={styles.quantityButtonText}>−</AppText>
-            </Pressable>
-
-            <AppText style={styles.quantityText}>{quantity}</AppText>
-
-            <Pressable style={styles.quantityButton} onPress={onIncrement}>
-              <AppText style={styles.quantityButtonText}>+</AppText>
-            </Pressable>
-          </View>
-        ) : (
-          <Pressable style={styles.addButton} onPress={onAdd}>
-            <AppText style={styles.addButtonText}>Add</AppText>
-          </Pressable>
-        )}
-      </View>
-    </View>
-  );
-}
-
-export function ShopDetailsScreen({ route, navigation }: Props) {
+export function ShopDetailsScreen({ route }: Props) {
+  const rootNavigation = useNavigation<NavigationProp<ParamListBase>>();
   const { shopId } = route.params;
-  const shop = useMemo(() => getShopById(shopId), [shopId]);
+  const [expandedSubcategoryId, setExpandedSubcategoryId] = useState<string | null>(null);
+  const [sortMode, setSortMode] = useState<SortMode>('recommended');
 
-  const [bannerIndex, setBannerIndex] = useState(0);
-  const bannerRef = useRef<FlatList<string>>(null);
-  const { addItem, getItemQuantity, incrementQuantity, decrementQuantity } = useCart();
+  const shop = useMemo(() => getMockShopById(shopId), [shopId]);
 
-  useEffect(() => {
-    if (!shop || shop.banners.length === 0) {
-      return;
+  const { itemCount, subtotal } = useCart();
+
+  const subcategorySections = useMemo(
+    () =>
+      shop.subcategories.map((subcategory) => ({
+        ...subcategory,
+        products: getMockProducts({ shopId: shop.id, subcategoryId: subcategory.id }),
+      })),
+    [shop.id, shop.subcategories],
+  );
+
+  const expandedSubcategory = useMemo(
+    () => subcategorySections.find((section) => section.id === expandedSubcategoryId) ?? null,
+    [expandedSubcategoryId, subcategorySections],
+  );
+
+  const sortedExpandedProducts = useMemo(() => {
+    if (!expandedSubcategory) {
+      return [];
     }
 
-    const timer = setInterval(() => {
-      const next = (bannerIndex + 1) % shop.banners.length;
-      bannerRef.current?.scrollToIndex({ index: next, animated: true });
-      setBannerIndex(next);
-    }, 2500);
+    const products = [...expandedSubcategory.products];
 
-    return () => clearInterval(timer);
-  }, [bannerIndex, shop]);
+    switch (sortMode) {
+      case 'price_low_high':
+        products.sort((left, right) => left.price - right.price);
+        break;
+      case 'price_high_low':
+        products.sort((left, right) => right.price - left.price);
+        break;
+      case 'discount':
+        products.sort(
+          (left, right) =>
+            getDiscountPercent(right.price, right.mrp) - getDiscountPercent(left.price, left.mrp),
+        );
+        break;
+      case 'in_stock':
+        products.sort((left, right) => {
+          if (left.inStock === right.inStock) {
+            return left.price - right.price;
+          }
+          return left.inStock ? -1 : 1;
+        });
+        break;
+      default:
+        break;
+    }
 
-  if (!shop) {
-    return (
-      <Screen>
-        <AppHeader />
-        <AppText style={styles.notFoundText}>Shop not found.</AppText>
-      </Screen>
-    );
-  }
+    return products;
+  }, [expandedSubcategory, sortMode]);
 
   return (
     <Screen>
       <AppHeader />
 
-      <View style={styles.fixedInfoSection}>
-        <AppText style={styles.shopTitle}>{shop.name}</AppText>
-        <AppText style={styles.shopAddress}>{shop.address}</AppText>
-        <AppText style={styles.shopTiming}>Open Hours: {shop.timing}</AppText>
+      <View style={styles.bannerBlock}>
+        <View style={styles.bannerBackground}>
+          <AppText style={styles.bannerTitle}>{shop.name}</AppText>
+          <AppText style={styles.bannerMeta}>
+            {`⭐ ${shop.rating.toFixed(1)} • 📍 ${shop.distanceKm.toFixed(1)} km • ⏱️ ${shop.etaMinutes} min`}
+          </AppText>
+
+          <View style={styles.badgesRow}>
+            {shop.isVerified ? (
+              <View style={styles.verifiedBadge}>
+                <AppText style={styles.verifiedText}>Verified</AppText>
+              </View>
+            ) : null}
+            {shop.isPremium ? (
+              <View style={styles.premiumBadge}>
+                <AppText style={styles.premiumText}>Premium</AppText>
+              </View>
+            ) : null}
+            <View style={[styles.openBadge, shop.isOpenNow ? styles.openNow : styles.closedNow]}>
+              <AppText
+                style={[
+                  styles.openText,
+                  shop.isOpenNow ? styles.openTextOpen : styles.openTextClosed,
+                ]}
+              >
+                {shop.isOpenNow ? 'Open now' : 'Closed'}
+              </AppText>
+            </View>
+          </View>
+        </View>
       </View>
 
-      <ScrollView
+      <FlatList
+        data={subcategorySections}
+        keyExtractor={(item) => item.id}
+        contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.contentContainer}
-      >
-        <FlatList
-          ref={bannerRef}
-          horizontal
-          data={shop.banners}
-          keyExtractor={(item, index) => `${item}-${index}`}
-          showsHorizontalScrollIndicator={false}
-          pagingEnabled
-          renderItem={({ item }) => (
-            <Image source={{ uri: item }} style={styles.bannerImage} resizeMode="cover" />
-          )}
-          onMomentumScrollEnd={(event) => {
-            const nextIndex = Math.round(event.nativeEvent.contentOffset.x / 328);
-            setBannerIndex(nextIndex);
-          }}
-          getItemLayout={(_, index) => ({
-            length: 328,
-            offset: 328 * index,
-            index,
-          })}
-          contentContainerStyle={styles.bannerList}
-        />
-
-        <View style={styles.dotRow}>
-          {shop.banners.map((_, idx) => (
-            <View
-              key={`banner-dot-${idx}`}
-              style={[styles.dot, idx === bannerIndex ? styles.dotActive : null]}
-            />
-          ))}
-        </View>
-
-        {shop.subcategories.map((subcategory) => (
-          <View key={subcategory.id} style={styles.subcategoryBlock}>
-            <View style={styles.subcategoryHeader}>
-              <AppText style={styles.subcategoryTitle}>{subcategory.name}</AppText>
-              <Pressable
-                onPress={() =>
-                  navigation.navigate('SubcategoryProducts', {
-                    shopId: shop.id,
-                    subcategoryId: subcategory.id,
-                  })
-                }
-              >
-                <AppText style={styles.subcategoryViewAll}>View All</AppText>
-              </Pressable>
+        renderItem={({ item: section }) => (
+          <View style={styles.subcategorySection}>
+            <View style={styles.sectionHeaderRow}>
+              <AppText style={styles.sectionTitle}>{section.name}</AppText>
+              <View style={styles.sectionHeaderRight}>
+                <Pressable
+                  onPress={() => {
+                    setSortMode('recommended');
+                    setExpandedSubcategoryId(section.id);
+                  }}
+                >
+                  <AppText style={styles.viewAllText}>View All</AppText>
+                </Pressable>
+              </View>
             </View>
-            <ScrollView
+
+            <FlatList
+              data={section.products.slice(0, 8)}
+              keyExtractor={(item) => item.id}
               horizontal
               showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.productRow}
-            >
-              {subcategory.products.map((product) => (
-                <ProductCard
-                  key={product.id}
-                  product={product}
-                  quantity={getItemQuantity(product.id)}
-                  onAdd={() => addItem(product)}
-                  onIncrement={() => incrementQuantity(product.id)}
-                  onDecrement={() => decrementQuantity(product.id)}
-                />
-              ))}
-            </ScrollView>
+              contentContainerStyle={styles.sectionRow}
+              initialNumToRender={4}
+              maxToRenderPerBatch={6}
+              windowSize={5}
+              removeClippedSubviews
+              renderItem={({ item: product }) => (
+                <View style={styles.cardColumn}>
+                  <ProductCard
+                    product={product}
+                    shopId={shop.id}
+                    onPress={() => Alert.alert('Coming soon', 'Product detail coming soon')}
+                  />
+                </View>
+              )}
+            />
           </View>
-        ))}
-      </ScrollView>
+        )}
+      />
+
+      <Modal
+        visible={Boolean(expandedSubcategory)}
+        transparent
+        animationType="slide"
+        onRequestClose={() => {
+          setExpandedSubcategoryId(null);
+          setSortMode('recommended');
+        }}
+      >
+        <Pressable
+          style={styles.modalBackdrop}
+          onPress={() => {
+            setExpandedSubcategoryId(null);
+            setSortMode('recommended');
+          }}
+        >
+          <Pressable style={styles.modalSheet} onPress={() => undefined}>
+            <View style={styles.modalHeaderRow}>
+              <AppText style={styles.modalTitle}>{expandedSubcategory?.name ?? 'Products'}</AppText>
+              <Pressable
+                onPress={() => {
+                  setExpandedSubcategoryId(null);
+                  setSortMode('recommended');
+                }}
+              >
+                <AppText style={styles.modalClose}>✕</AppText>
+              </Pressable>
+            </View>
+
+            <FlatList
+              data={SORT_CHIPS}
+              keyExtractor={(item) => item.key}
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.sortRow}
+              renderItem={({ item }) => (
+                <Chip
+                  label={item.label}
+                  variant={sortMode === item.key ? 'selected' : 'default'}
+                  onPress={() => setSortMode(item.key)}
+                />
+              )}
+            />
+
+            <FlatList
+              data={sortedExpandedProducts}
+              keyExtractor={(item) => item.id}
+              numColumns={2}
+              showsVerticalScrollIndicator={false}
+              columnWrapperStyle={styles.modalGridRow}
+              contentContainerStyle={styles.modalGridContent}
+              renderItem={({ item: product }) => (
+                <View style={styles.modalCardColumn}>
+                  <ProductCard
+                    product={product}
+                    shopId={shop.id}
+                    onPress={() => Alert.alert('Coming soon', 'Product detail coming soon')}
+                  />
+                </View>
+              )}
+            />
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {itemCount > 0 ? (
+        <Pressable style={styles.viewCartBar} onPress={() => rootNavigation.navigate('Cart')}>
+          <View>
+            <AppText style={styles.viewCartTitle}>{itemCount} items in cart</AppText>
+            <AppText style={styles.viewCartSubtitle}>₹{subtotal} • Tap to view cart</AppText>
+          </View>
+          <AppText style={styles.viewCartAction}>View Cart</AppText>
+        </Pressable>
+      ) : null}
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  fixedInfoSection: {
-    marginTop: -6,
-    marginBottom: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
-    paddingBottom: 10,
-  },
-  shopTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#111827',
-  },
-  shopAddress: {
-    marginTop: 4,
-    fontSize: 14,
-    color: '#4B5563',
-  },
-  shopTiming: {
-    marginTop: 3,
-    fontSize: 13,
-    color: '#6B7280',
-  },
-  contentContainer: {
-    paddingBottom: 12,
-  },
-  bannerList: {
-    paddingRight: 10,
-  },
-  bannerImage: {
-    width: 328,
-    height: 150,
-    borderRadius: 12,
-    marginRight: 10,
-  },
-  dotRow: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 6,
-    marginTop: 10,
-    marginBottom: 8,
-  },
-  dot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#D1D5DB',
-  },
-  dotActive: {
-    backgroundColor: '#6BA539',
-  },
-  subcategoryBlock: {
-    marginTop: 14,
-  },
-  subcategoryHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+  bannerBlock: {
+    marginTop: -4,
     marginBottom: 10,
   },
-  subcategoryTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#111827',
-  },
-  subcategoryViewAll: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#22A55D',
-  },
-  productRow: {
-    paddingBottom: 8,
-    paddingRight: 8,
-  },
-  productCard: {
-    width: 152,
+  bannerBackground: {
+    borderRadius: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    backgroundColor: '#ECFDF3',
     borderWidth: 1,
-    borderColor: '#E5E7EB',
-    borderRadius: 10,
-    overflow: 'hidden',
-    backgroundColor: '#FFFFFF',
-    marginRight: 10,
+    borderColor: '#CBE8D7',
   },
-  discountBadge: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    zIndex: 2,
-    backgroundColor: '#22C55E',
+  bannerTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#111827',
+  },
+  bannerMeta: {
+    marginTop: 4,
+    fontSize: 12,
+    color: '#374151',
+    fontWeight: '500',
+  },
+  badgesRow: {
+    marginTop: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 6,
+  },
+  verifiedBadge: {
+    borderRadius: 12,
+    backgroundColor: '#DCFCE7',
     paddingHorizontal: 8,
     paddingVertical: 4,
-    borderBottomRightRadius: 8,
   },
-  discountText: {
-    color: '#FFFFFF',
-    fontSize: 10,
+  verifiedText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#166534',
+  },
+  premiumBadge: {
+    borderRadius: 12,
+    backgroundColor: '#FEF3C7',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  premiumText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#92400E',
+  },
+  openBadge: {
+    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  openNow: {
+    backgroundColor: '#DCFCE7',
+  },
+  closedNow: {
+    backgroundColor: '#FEE2E2',
+  },
+  openText: {
+    fontSize: 11,
     fontWeight: '700',
   },
-  productImage: {
-    width: '100%',
-    height: 104,
+  openTextOpen: {
+    color: '#166534',
   },
-  productBody: {
-    paddingHorizontal: 8,
-    paddingVertical: 7,
+  openTextClosed: {
+    color: '#991B1B',
   },
-  productBrand: {
-    fontSize: 11,
-    color: '#6B7280',
+  listContent: {
+    paddingBottom: 84,
   },
-  productName: {
-    marginTop: 2,
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#111827',
+  subcategorySection: {
+    marginBottom: 14,
   },
-  unitPill: {
-    marginTop: 6,
-    height: 28,
-    borderWidth: 1,
-    borderColor: '#D1D5DB',
-    borderRadius: 6,
-    paddingHorizontal: 7,
+  sectionHeaderRow: {
+    marginBottom: 10,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  unitText: {
-    fontSize: 12,
-    color: '#4B5563',
-  },
-  unitArrow: {
-    fontSize: 12,
-    color: '#6B7280',
-    lineHeight: 12,
-  },
-  priceRow: {
-    marginTop: 6,
+  sectionHeaderRight: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
+    gap: 8,
   },
-  price: {
+  sectionTitle: {
     fontSize: 18,
     fontWeight: '700',
     color: '#111827',
   },
-  mrp: {
-    fontSize: 12,
-    color: '#9CA3AF',
-    textDecorationLine: 'line-through',
-  },
-  addButton: {
-    marginTop: 8,
-    height: 30,
-    borderRadius: 8,
-    backgroundColor: '#EF4444',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  addButtonText: {
-    color: '#FFFFFF',
-    fontSize: 14,
+  viewAllText: {
+    fontSize: 13,
     fontWeight: '700',
+    color: '#22A55D',
   },
-  quantityWrap: {
-    marginTop: 8,
-    height: 30,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#D1D5DB',
+  sectionRow: {
+    paddingRight: 8,
+  },
+  cardColumn: {
+    width: 170,
+    marginRight: 10,
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: '#00000066',
+    justifyContent: 'flex-end',
+  },
+  modalSheet: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+    maxHeight: '85%',
+    paddingHorizontal: 12,
+    paddingTop: 12,
+  },
+  modalHeaderRow: {
+    marginBottom: 10,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    overflow: 'hidden',
   },
-  quantityButton: {
-    width: 30,
-    height: 30,
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#111827',
+  },
+  modalClose: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#6B7280',
+  },
+  sortRow: {
+    paddingBottom: 10,
+    paddingRight: 8,
+    gap: 8,
+  },
+  modalGridRow: {
+    justifyContent: 'space-between',
+    gap: 10,
+  },
+  modalGridContent: {
+    paddingBottom: 96,
+  },
+  modalCardColumn: {
+    width: '48.5%',
+  },
+  viewCartBar: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    borderTopWidth: 1,
+    borderTopColor: '#E5E7EB',
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#F9FAFB',
   },
-  quantityButtonText: {
-    fontSize: 15,
+  viewCartTitle: {
+    fontSize: 14,
     fontWeight: '700',
     color: '#111827',
   },
-  quantityText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#111827',
-  },
-  notFoundText: {
-    marginTop: 10,
-    fontSize: 16,
+  viewCartSubtitle: {
+    marginTop: 2,
+    fontSize: 12,
     color: '#4B5563',
+  },
+  viewCartAction: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#22A55D',
   },
 });
