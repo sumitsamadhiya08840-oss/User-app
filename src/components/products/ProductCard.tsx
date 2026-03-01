@@ -1,5 +1,6 @@
-import { memo, useMemo, useState } from 'react';
+import { memo, useCallback, useMemo, useState } from 'react';
 import { FlatList, Image, Modal, Pressable, StyleSheet, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Product } from '../../services/products/mockProducts';
 import { useCart } from '../../contexts/CartContext';
@@ -13,6 +14,7 @@ type Props = {
 };
 
 function ProductCardComponent({ product, shopId, onPress }: Props) {
+  const insets = useSafeAreaInsets();
   const [selectedVariantId, setSelectedVariantId] = useState(product.variants[0]?.id);
   const [isVariantModalOpen, setIsVariantModalOpen] = useState(false);
   const { addItem, increment, decrement, getQuantity } = useCart();
@@ -23,31 +25,47 @@ function ProductCardComponent({ product, shopId, onPress }: Props) {
     [product.variants, selectedVariantId],
   );
 
-  const getCartProductId = (variantId: string) => `${product.id}-${variantId}`;
-  const quantity = getQuantity(getCartProductId(selectedVariant.id));
+  const getCartProductId = useCallback(
+    (variantId: string) => `${product.id}-${variantId}`,
+    [product.id],
+  );
 
-  const handleAdd = (variantId: string) => {
-    const variant = product.variants.find((item) => item.id === variantId);
-    if (!variant) {
-      return;
-    }
+  const quantity = selectedVariant ? getQuantity(getCartProductId(selectedVariant.id)) : 0;
 
-    addItem(
-      {
-        id: getCartProductId(variant.id),
+  const handleAdd = useCallback(
+    (variantId: string) => {
+      const variant = product.variants.find((item) => item.id === variantId);
+      if (!variant) {
+        return;
+      }
+
+      addItem(
+        {
+          id: getCartProductId(variant.id),
+          shopId,
+          subcategoryId: product.subcategoryId,
+          name: `${product.name} (${variant.label})`,
+          description: product.description,
+          imageUrl: product.imageUrl,
+          unit: variant.label,
+          price: variant.price,
+          mrp: variant.mrp,
+          inStock: variant.inStock,
+        },
         shopId,
-        subcategoryId: product.subcategoryId,
-        name: `${product.name} (${variant.label})`,
-        description: product.description,
-        imageUrl: product.imageUrl,
-        unit: variant.label,
-        price: variant.price,
-        mrp: variant.mrp,
-        inStock: variant.inStock,
-      },
-      shopId,
-    );
-  };
+      );
+    },
+    [addItem, getCartProductId, product.description, product.imageUrl, product.name, product.subcategoryId, product.variants, shopId],
+  );
+
+  const closeVariantModal = useCallback(() => setIsVariantModalOpen(false), []);
+  const openVariantModal = useCallback(() => setIsVariantModalOpen(true), []);
+
+  const keyExtractor = useCallback((item: Product['variants'][number]) => item.id, []);
+
+  if (!selectedVariant) {
+    return null;
+  }
 
   return (
     <Pressable style={styles.card} onPress={onPress}>
@@ -70,7 +88,7 @@ function ProductCardComponent({ product, shopId, onPress }: Props) {
           style={styles.variantSelector}
           onPress={(event) => {
             event.stopPropagation();
-            setIsVariantModalOpen(true);
+            openVariantModal();
           }}
         >
           <AppText style={styles.variantSelectorText}>{selectedVariant.label}</AppText>
@@ -134,10 +152,17 @@ function ProductCardComponent({ product, shopId, onPress }: Props) {
         visible={isVariantModalOpen}
         transparent
         animationType="slide"
-        onRequestClose={() => setIsVariantModalOpen(false)}
+        onRequestClose={closeVariantModal}
       >
-        <Pressable style={styles.modalBackdrop} onPress={() => setIsVariantModalOpen(false)}>
-          <Pressable style={styles.modalSheet} onPress={() => undefined}>
+        <Pressable style={styles.modalBackdrop} onPress={closeVariantModal}>
+          <Pressable
+            style={[styles.modalSheet, { paddingBottom: Math.max(16, insets.bottom + 10) }]}
+            onPress={(event) => event.stopPropagation()}
+          >
+            <View style={styles.dragHandleWrap}>
+              <View style={styles.dragHandle} />
+            </View>
+
             <View style={styles.modalTopRow}>
               <View style={styles.modalTopLeft}>
                 <Image
@@ -159,7 +184,7 @@ function ProductCardComponent({ product, shopId, onPress }: Props) {
                 </View>
               </View>
 
-              <Pressable style={styles.closeButton} onPress={() => setIsVariantModalOpen(false)}>
+              <Pressable style={styles.closeButton} onPress={closeVariantModal}>
                 <AppText style={styles.closeButtonText}>✕</AppText>
               </Pressable>
             </View>
@@ -168,9 +193,10 @@ function ProductCardComponent({ product, shopId, onPress }: Props) {
 
             <FlatList
               data={product.variants}
-              keyExtractor={(item) => item.id}
+              keyExtractor={keyExtractor}
               style={styles.modalList}
               showsVerticalScrollIndicator={false}
+              contentContainerStyle={styles.modalListContent}
               renderItem={({ item: variant }) => {
                 const variantQuantity = getQuantity(getCartProductId(variant.id));
 
@@ -183,7 +209,17 @@ function ProductCardComponent({ product, shopId, onPress }: Props) {
                     onPress={() => setSelectedVariantId(variant.id)}
                   >
                     <View style={styles.variantMeta}>
-                      <AppText style={styles.variantLabel}>{variant.label}</AppText>
+                      <View style={styles.variantLabelRow}>
+                        <AppText style={styles.variantLabel}>{variant.label}</AppText>
+                        <AppText
+                          style={[
+                            styles.variantStockText,
+                            variant.inStock ? styles.inStock : styles.outOfStock,
+                          ]}
+                        >
+                          {variant.inStock ? 'In stock' : 'Out of stock'}
+                        </AppText>
+                      </View>
 
                       <View style={styles.variantPriceRow}>
                         <AppText style={styles.variantPrice}>₹{variant.price}</AppText>
@@ -198,19 +234,22 @@ function ProductCardComponent({ product, shopId, onPress }: Props) {
 
                     <View>
                       {variantQuantity > 0 ? (
-                        <QuantityStepper
-                          quantity={variantQuantity}
-                          onIncrement={() => increment(getCartProductId(variant.id))}
-                          onDecrement={() => decrement(getCartProductId(variant.id))}
-                          disableIncrement={!variant.inStock}
-                        />
+                        <Pressable onPress={(event) => event.stopPropagation()}>
+                          <QuantityStepper
+                            quantity={variantQuantity}
+                            onIncrement={() => increment(getCartProductId(variant.id))}
+                            onDecrement={() => decrement(getCartProductId(variant.id))}
+                            disableIncrement={!variant.inStock}
+                          />
+                        </Pressable>
                       ) : (
                         <Pressable
                           style={[
                             styles.modalAddButton,
                             !variant.inStock ? styles.addButtonDisabled : null,
                           ]}
-                          onPress={() => {
+                          onPress={(event) => {
+                            event.stopPropagation();
                             if (variant.inStock) {
                               handleAdd(variant.id);
                               setSelectedVariantId(variant.id);
@@ -288,8 +327,8 @@ const styles = StyleSheet.create({
     marginTop: 6,
     minHeight: 28,
     borderWidth: 1,
-    borderColor: '#D1D5DB',
-    borderRadius: 6,
+    borderColor: '#E5E7EB',
+    borderRadius: 10,
     paddingHorizontal: 7,
     flexDirection: 'row',
     alignItems: 'center',
@@ -349,8 +388,8 @@ const styles = StyleSheet.create({
   addButton: {
     width: 92,
     height: 30,
-    borderRadius: 6,
-    backgroundColor: '#E96A6A',
+    borderRadius: 10,
+    backgroundColor: '#22A55D',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -373,11 +412,21 @@ const styles = StyleSheet.create({
   modalSheet: {
     maxHeight: '80%',
     backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
+    borderTopLeftRadius: 18,
+    borderTopRightRadius: 18,
     paddingHorizontal: 12,
-    paddingTop: 12,
-    paddingBottom: 18,
+    paddingTop: 8,
+  },
+  dragHandleWrap: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 8,
+  },
+  dragHandle: {
+    width: 44,
+    height: 5,
+    borderRadius: 999,
+    backgroundColor: '#D1D5DB',
   },
   modalTopRow: {
     flexDirection: 'row',
@@ -421,7 +470,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   modalTitle: {
-    marginTop: 14,
+    marginTop: 10,
     marginBottom: 8,
     fontSize: 16,
     fontWeight: '700',
@@ -430,10 +479,13 @@ const styles = StyleSheet.create({
   modalList: {
     maxHeight: 420,
   },
+  modalListContent: {
+    paddingBottom: 8,
+  },
   variantRow: {
     borderWidth: 1,
     borderColor: '#E5E7EB',
-    borderRadius: 10,
+    borderRadius: 12,
     padding: 10,
     marginBottom: 8,
     flexDirection: 'row',
@@ -442,16 +494,26 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   variantRowSelected: {
-    backgroundColor: '#F0F8E8',
-    borderColor: '#94A96C',
+    backgroundColor: '#ECFDF3',
+    borderColor: '#22A55D',
   },
   variantMeta: {
     flex: 1,
+  },
+  variantLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
   },
   variantLabel: {
     fontSize: 16,
     fontWeight: '600',
     color: '#111827',
+  },
+  variantStockText: {
+    fontSize: 11,
+    fontWeight: '600',
   },
   variantPriceRow: {
     marginTop: 5,
@@ -484,8 +546,8 @@ const styles = StyleSheet.create({
   modalAddButton: {
     width: 92,
     height: 34,
-    borderRadius: 8,
-    backgroundColor: '#0E8F4C',
+    borderRadius: 10,
+    backgroundColor: '#22A55D',
     alignItems: 'center',
     justifyContent: 'center',
   },

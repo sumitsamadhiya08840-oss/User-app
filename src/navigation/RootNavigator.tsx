@@ -1,19 +1,33 @@
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useState } from 'react';
 
 import { useAuth } from '../contexts/AuthContext';
 import { useCity } from '../contexts/CityContext';
+import { AddEditAddressScreen } from '../screens/AddEditAddressScreen';
+import { AddressListScreen } from '../screens/AddressListScreen';
 import { CartScreen } from '../screens/CartScreen';
 import { CategoryShopsScreen } from '../screens/CategoryShopsScreen';
 import { CitySelectionScreen } from '../screens/CitySelectionScreen';
+import { CheckoutScreen } from '../screens/CheckoutScreen';
+import { CouponsScreen } from '../screens/CouponsScreen';
+import { HelpCenterScreen } from '../screens/HelpCenterScreen';
 import { HomeScreen } from '../screens/HomeScreen';
+import { InvoiceScreen } from '../screens/InvoiceScreen';
 import { LoginScreen } from '../screens/LoginScreen';
+import { NotificationCenterScreen } from '../screens/NotificationCenterScreen';
+import { MyReviewsScreen } from '../screens/MyReviewsScreen';
+import { OrderDetailsScreen } from '../screens/OrderDetailsScreen';
+import { OrderSuccessScreen } from '../screens/OrderSuccessScreen';
+import { OrderTrackingScreen } from '../screens/OrderTrackingScreen';
 import { OrdersScreen } from '../screens/OrdersScreen';
+import { PaymentScreen } from '../screens/PaymentScreen';
 import { OtpVerifyScreen } from '../screens/OtpVerifyScreen';
 import { ProductDetailScreen } from '../screens/ProductDetailScreen';
 import { ProfileScreen } from '../screens/ProfileScreen';
+import { AddEditReviewScreen } from '../screens/AddEditReviewScreen';
 import { SearchScreen } from '../screens/SearchScreen';
 import { ShopDetailsScreen } from '../screens/ShopDetailsScreen';
 import { ShopListingScreen } from '../screens/ShopListingScreen';
@@ -52,6 +66,19 @@ function HomeNavigator() {
       <HomeStack.Screen name="ShopDetails" component={ShopDetailsScreen} />
       <HomeStack.Screen name="ProductDetail" component={ProductDetailScreen} />
       <HomeStack.Screen name="SubcategoryProducts" component={SubcategoryProductsScreen} />
+      <HomeStack.Screen name="AddressList" component={AddressListScreen} />
+      <HomeStack.Screen name="AddEditAddress" component={AddEditAddressScreen} />
+      <HomeStack.Screen name="HelpCenter" component={HelpCenterScreen} />
+      <HomeStack.Screen name="Notifications" component={NotificationCenterScreen} />
+      <HomeStack.Screen name="MyReviews" component={MyReviewsScreen} />
+      <HomeStack.Screen name="AddEditReview" component={AddEditReviewScreen} />
+      <HomeStack.Screen name="Checkout" component={CheckoutScreen} />
+      <HomeStack.Screen name="Coupons" component={CouponsScreen} />
+      <HomeStack.Screen name="Payment" component={PaymentScreen} />
+      <HomeStack.Screen name="Invoice" component={InvoiceScreen} />
+      <HomeStack.Screen name="OrderSuccess" component={OrderSuccessScreen} />
+      <HomeStack.Screen name="OrderDetails" component={OrderDetailsScreen} />
+      <HomeStack.Screen name="OrderTracking" component={OrderTrackingScreen} />
     </HomeStack.Navigator>
   );
 }
@@ -59,13 +86,27 @@ function HomeNavigator() {
 function MainTabNavigator() {
   return (
     <Tabs.Navigator
-      screenOptions={{
+      screenOptions={({ route }) => ({
         headerShown: false,
+        tabBarActiveTintColor: '#22A55D',
+        tabBarInactiveTintColor: '#6B7280',
+        tabBarIcon: ({ color, size, focused }) => {
+          const iconNameByRoute: Record<keyof MainTabParamList, keyof typeof Ionicons.glyphMap> = {
+            Home: focused ? 'home' : 'home-outline',
+            Search: focused ? 'search' : 'search-outline',
+            Cart: focused ? 'cart' : 'cart-outline',
+            Orders: focused ? 'receipt' : 'receipt-outline',
+            Profile: focused ? 'person' : 'person-outline',
+          };
+
+          const iconName = iconNameByRoute[route.name as keyof MainTabParamList] ?? 'ellipse';
+          return <Ionicons name={iconName} size={size} color={color} />;
+        },
         tabBarLabelStyle: {
           fontSize: 12,
           fontWeight: '600',
         },
-      }}
+      })}
     >
       <Tabs.Screen name="Home" component={HomeNavigator} />
       <Tabs.Screen name="Search" component={SearchScreen} />

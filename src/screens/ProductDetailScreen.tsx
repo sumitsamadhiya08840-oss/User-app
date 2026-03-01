@@ -1,6 +1,6 @@
-import { NavigationProp, ParamListBase, useNavigation } from '@react-navigation/native';
+import { NavigationProp, ParamListBase, useFocusEffect, useNavigation } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { Image, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { QuantityStepper } from '../components/cart/QuantityStepper';
@@ -10,6 +10,7 @@ import { Screen } from '../components/ui/Screen';
 import { useCart } from '../contexts/CartContext';
 import { HomeStackParamList } from '../navigation/types';
 import { getProductById } from '../services/products/productDetailsService';
+import { getReviewsForTarget } from '../services/reviews/reviewService';
 import { getMockShopById } from '../services/shops/mockShopDetails';
 
 type Props = NativeStackScreenProps<HomeStackParamList, 'ProductDetail'>;
@@ -30,6 +31,8 @@ export function ProductDetailScreen({ route }: Props) {
   const product = useMemo(() => getProductById(shopId, productId), [productId, shopId]);
 
   const [selectedVariantId, setSelectedVariantId] = useState(product?.variants[0]?.id);
+  const [reviewCount, setReviewCount] = useState(0);
+  const [averageRating, setAverageRating] = useState(0);
 
   const { addItem, increment, decrement, getQuantity, itemCount, subtotal } = useCart();
 
@@ -37,6 +40,26 @@ export function ProductDetailScreen({ route }: Props) {
     () =>
       product?.variants.find((variant) => variant.id === selectedVariantId) ?? product?.variants[0],
     [product?.variants, selectedVariantId],
+  );
+
+  const loadProductReviews = useCallback(async () => {
+    const productReviews = await getReviewsForTarget('product', productId);
+
+    if (!productReviews.length) {
+      setReviewCount(0);
+      setAverageRating(0);
+      return;
+    }
+
+    const totalRating = productReviews.reduce((sum, review) => sum + review.rating, 0);
+    setReviewCount(productReviews.length);
+    setAverageRating(totalRating / productReviews.length);
+  }, [productId]);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadProductReviews();
+    }, [loadProductReviews]),
   );
 
   if (!product || !selectedVariant) {
@@ -133,6 +156,24 @@ export function ProductDetailScreen({ route }: Props) {
         >
           {selectedVariant.inStock ? 'In stock' : 'Out of stock'}
         </AppText>
+
+        <View style={styles.reviewRow}>
+          <AppText style={styles.reviewSummaryText}>
+            {reviewCount > 0
+              ? `Rating ${averageRating.toFixed(1)} ★ (${reviewCount} reviews)`
+              : 'No reviews yet'}
+          </AppText>
+          <Pressable
+            onPress={() =>
+              rootNavigation.navigate('AddEditReview', {
+                targetType: 'product',
+                targetId: product.id,
+              })
+            }
+          >
+            <AppText style={styles.writeReviewText}>Write Review</AppText>
+          </Pressable>
+        </View>
       </ScrollView>
 
       {itemCount > 0 ? (
@@ -279,6 +320,27 @@ const styles = StyleSheet.create({
   },
   outOfStock: {
     color: '#DC2626',
+  },
+  reviewRow: {
+    marginTop: 14,
+    borderTopWidth: 1,
+    borderTopColor: '#E5E7EB',
+    paddingTop: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
+  reviewSummaryText: {
+    flex: 1,
+    fontSize: 13,
+    color: '#374151',
+    fontWeight: '600',
+  },
+  writeReviewText: {
+    fontSize: 13,
+    color: '#2563EB',
+    fontWeight: '700',
   },
   stickyBar: {
     position: 'absolute',

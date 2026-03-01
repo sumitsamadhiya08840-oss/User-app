@@ -1,6 +1,6 @@
-import { NavigationProp, ParamListBase, useNavigation } from '@react-navigation/native';
+import { NavigationProp, ParamListBase, useFocusEffect, useNavigation } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { FlatList, Modal, Pressable, StyleSheet, View } from 'react-native';
 
 import { ProductCard } from '../components/products/ProductCard';
@@ -11,6 +11,7 @@ import { Screen } from '../components/ui/Screen';
 import { useCart } from '../contexts/CartContext';
 import { HomeStackParamList } from '../navigation/types';
 import { getMockProducts } from '../services/products/mockProducts';
+import { getReviewsForTarget } from '../services/reviews/reviewService';
 import { getMockShopById } from '../services/shops/mockShopDetails';
 
 type Props = NativeStackScreenProps<HomeStackParamList, 'ShopDetails'>;
@@ -37,6 +38,8 @@ export function ShopDetailsScreen({ route, navigation }: Props) {
   const { shopId } = route.params;
   const [expandedSubcategoryId, setExpandedSubcategoryId] = useState<string | null>(null);
   const [sortMode, setSortMode] = useState<SortMode>('recommended');
+  const [reviewCount, setReviewCount] = useState(0);
+  const [averageRating, setAverageRating] = useState(0);
 
   const shop = useMemo(() => getMockShopById(shopId), [shopId]);
 
@@ -91,6 +94,26 @@ export function ShopDetailsScreen({ route, navigation }: Props) {
     return products;
   }, [expandedSubcategory, sortMode]);
 
+  const loadShopReviews = useCallback(async () => {
+    const shopReviews = await getReviewsForTarget('shop', shopId);
+
+    if (!shopReviews.length) {
+      setReviewCount(0);
+      setAverageRating(0);
+      return;
+    }
+
+    const totalRating = shopReviews.reduce((sum, review) => sum + review.rating, 0);
+    setReviewCount(shopReviews.length);
+    setAverageRating(totalRating / shopReviews.length);
+  }, [shopId]);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadShopReviews();
+    }, [loadShopReviews]),
+  );
+
   return (
     <Screen>
       <AppHeader />
@@ -101,6 +124,24 @@ export function ShopDetailsScreen({ route, navigation }: Props) {
           <AppText style={styles.bannerMeta}>
             {`⭐ ${shop.rating.toFixed(1)} • 📍 ${shop.distanceKm.toFixed(1)} km • ⏱️ ${shop.etaMinutes} min`}
           </AppText>
+
+          <View style={styles.reviewsRow}>
+            <AppText style={styles.reviewsText}>
+              {reviewCount > 0
+                ? `Reviews: ${averageRating.toFixed(1)} ★ (${reviewCount})`
+                : 'No reviews yet'}
+            </AppText>
+            <Pressable
+              onPress={() =>
+                navigation.navigate('AddEditReview', {
+                  targetType: 'shop',
+                  targetId: shop.id,
+                })
+              }
+            >
+              <AppText style={styles.writeReviewText}>Write Review</AppText>
+            </Pressable>
+          </View>
 
           <View style={styles.badgesRow}>
             {shop.isVerified ? (
@@ -283,6 +324,23 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#374151',
     fontWeight: '500',
+  },
+  reviewsRow: {
+    marginTop: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
+  reviewsText: {
+    fontSize: 12,
+    color: '#374151',
+    fontWeight: '600',
+  },
+  writeReviewText: {
+    fontSize: 12,
+    color: '#22A55D',
+    fontWeight: '700',
   },
   badgesRow: {
     marginTop: 8,
