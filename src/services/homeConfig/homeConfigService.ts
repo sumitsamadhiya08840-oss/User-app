@@ -29,7 +29,7 @@ export const getHomeConfig = async (
     const cached = await AsyncStorage.getItem(STORAGE_KEYS.HOME_CONFIG_CACHE);
     if (cached) {
       const parsed = parseHomeConfig(cached);
-      if (parsed) {
+      if (parsed && parsed.version === mockHomeConfig.version) {
         return parsed;
       }
     }
