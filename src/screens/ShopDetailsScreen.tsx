@@ -1,7 +1,7 @@
 import { NavigationProp, ParamListBase, useNavigation } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useMemo, useState } from 'react';
-import { Alert, FlatList, Modal, Pressable, StyleSheet, View } from 'react-native';
+import { FlatList, Modal, Pressable, StyleSheet, View } from 'react-native';
 
 import { ProductCard } from '../components/products/ProductCard';
 import { AppHeader } from '../components/ui/AppHeader';
@@ -32,7 +32,7 @@ const getDiscountPercent = (price: number, mrp?: number) => {
   return ((mrp - price) / mrp) * 100;
 };
 
-export function ShopDetailsScreen({ route }: Props) {
+export function ShopDetailsScreen({ route, navigation }: Props) {
   const rootNavigation = useNavigation<NavigationProp<ParamListBase>>();
   const { shopId } = route.params;
   const [expandedSubcategoryId, setExpandedSubcategoryId] = useState<string | null>(null);
@@ -163,7 +163,12 @@ export function ShopDetailsScreen({ route }: Props) {
                   <ProductCard
                     product={product}
                     shopId={shop.id}
-                    onPress={() => Alert.alert('Coming soon', 'Product detail coming soon')}
+                    onPress={() =>
+                      navigation.navigate('ProductDetail', {
+                        shopId: shop.id,
+                        productId: product.id,
+                      })
+                    }
                   />
                 </View>
               )}
@@ -228,7 +233,12 @@ export function ShopDetailsScreen({ route }: Props) {
                   <ProductCard
                     product={product}
                     shopId={shop.id}
-                    onPress={() => Alert.alert('Coming soon', 'Product detail coming soon')}
+                    onPress={() =>
+                      navigation.navigate('ProductDetail', {
+                        shopId: shop.id,
+                        productId: product.id,
+                      })
+                    }
                   />
                 </View>
               )}

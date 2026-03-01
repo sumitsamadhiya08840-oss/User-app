@@ -14,14 +14,15 @@ type Props = {
 export function RecommendedProductsBlock({ block }: Props) {
   const navigation = useNavigation<NativeStackNavigationProp<HomeStackParamList>>();
 
-  const handleProductPress = (shopId?: string) => {
-    if (shopId) {
-      navigation.navigate('ShopDetails', { shopId });
+  const handleProductPress = (shopId?: string, productId?: string) => {
+    const resolvedProductId = productId ?? undefined;
+
+    if (shopId && resolvedProductId) {
+      navigation.navigate('ProductDetail', { shopId, productId: resolvedProductId });
       return;
     }
 
     Alert.alert('Coming Soon', 'Product detail screen will be available in upcoming phase.');
-    // TODO: Navigate to ProductDetail route once available in navigation types.
   };
 
   if (block.data.length === 0) {
@@ -41,7 +42,7 @@ export function RecommendedProductsBlock({ block }: Props) {
           <Pressable
             key={product.id}
             style={styles.card}
-            onPress={() => handleProductPress(product.shopId)}
+            onPress={() => handleProductPress(product.shopId, product.productId ?? product.id)}
           >
             <Image source={{ uri: product.imageUrl }} style={styles.image} resizeMode="cover" />
 

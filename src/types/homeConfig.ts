@@ -21,6 +21,7 @@ export type FeaturedShopItem = {
 
 export type RecommendedProductItem = {
   id: string;
+  productId?: string;
   name: string;
   price: number;
   mrp?: number;

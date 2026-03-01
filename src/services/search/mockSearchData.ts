@@ -1,4 +1,6 @@
-import { DEMO_CATEGORIES, DEMO_SHOPS } from '../../constants/demoShops';
+import { DEMO_CATEGORIES } from '../../constants/demoShops';
+import { getMockProducts } from '../products/mockProducts';
+import { getMockShopById } from '../shops/mockShopDetails';
 
 export type MockSearchShop = {
   id: string;
@@ -10,6 +12,7 @@ export type MockSearchShop = {
 
 export type MockSearchProduct = {
   id: string;
+  productId: string;
   name: string;
   price: number;
   mrp?: number;
@@ -37,20 +40,20 @@ export const mockShops: MockSearchShop[] = DEMO_CATEGORIES.flatMap((category) =>
   })),
 );
 
-export const mockProducts: MockSearchProduct[] = DEMO_SHOPS.flatMap((shop) => {
-  const categoryId =
-    DEMO_CATEGORIES.find((category) =>
-      category.shops.some((categoryShop) => categoryShop.id === shop.id),
-    )?.id ?? 'general';
+export const mockProducts: MockSearchProduct[] = DEMO_CATEGORIES.flatMap((category) =>
+  category.shops.flatMap((shop) => {
+    const subcategories = getMockShopById(shop.id).subcategories;
 
-  return shop.subcategories.flatMap((subcategory) =>
-    subcategory.products.map((product) => ({
-      id: product.id,
-      name: product.name,
-      price: product.price,
-      mrp: product.mrp,
-      shopId: shop.id,
-      categoryId,
-    })),
-  );
-});
+    return subcategories.flatMap((subcategory) =>
+      getMockProducts({ shopId: shop.id, subcategoryId: subcategory.id }).map((product) => ({
+        id: product.id,
+        productId: product.id,
+        name: product.name,
+        price: product.price,
+        mrp: product.mrp,
+        shopId: shop.id,
+        categoryId: category.id,
+      })),
+    );
+  }),
+);

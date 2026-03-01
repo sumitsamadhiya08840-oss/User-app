@@ -13,6 +13,7 @@ import {
   addRecentSearch,
   getRecentSearches,
 } from '../services/search/recentSearchesService';
+import { MockSearchProduct } from '../services/search/mockSearchData';
 import { SearchSuggestionType, searchAll } from '../services/search/searchService';
 
 const TRENDING_SEARCHES = [
@@ -91,8 +92,20 @@ export function SearchScreen() {
     });
   };
 
-  const handleProductPress = async (productName: string) => {
-    await executeSearch(productName);
+  const handleProductPress = async (product: MockSearchProduct) => {
+    await executeSearch(product.name);
+
+    if (product.shopId && product.productId) {
+      navigation.navigate('Home', {
+        screen: 'ProductDetail',
+        params: {
+          shopId: product.shopId,
+          productId: product.productId,
+        },
+      });
+      return;
+    }
+
     Alert.alert('Coming soon', 'Product detail coming soon');
   };
 
@@ -229,7 +242,7 @@ export function SearchScreen() {
                     <Pressable
                       key={product.id}
                       style={styles.resultRow}
-                      onPress={() => handleProductPress(product.name)}
+                      onPress={() => handleProductPress(product)}
                     >
                       <AppText style={styles.resultPrimary}>🛍️ {product.name}</AppText>
                       <AppText style={styles.resultSecondary}>

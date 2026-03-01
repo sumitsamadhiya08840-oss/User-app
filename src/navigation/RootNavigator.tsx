@@ -12,6 +12,7 @@ import { HomeScreen } from '../screens/HomeScreen';
 import { LoginScreen } from '../screens/LoginScreen';
 import { OrdersScreen } from '../screens/OrdersScreen';
 import { OtpVerifyScreen } from '../screens/OtpVerifyScreen';
+import { ProductDetailScreen } from '../screens/ProductDetailScreen';
 import { ProfileScreen } from '../screens/ProfileScreen';
 import { SearchScreen } from '../screens/SearchScreen';
 import { ShopDetailsScreen } from '../screens/ShopDetailsScreen';
@@ -49,6 +50,7 @@ function HomeNavigator() {
       <HomeStack.Screen name="CategoryShops" component={CategoryShopsScreen} />
       <HomeStack.Screen name="ShopListing" component={ShopListingScreen} />
       <HomeStack.Screen name="ShopDetails" component={ShopDetailsScreen} />
+      <HomeStack.Screen name="ProductDetail" component={ProductDetailScreen} />
       <HomeStack.Screen name="SubcategoryProducts" component={SubcategoryProductsScreen} />
     </HomeStack.Navigator>
   );
