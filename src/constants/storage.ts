@@ -3,6 +3,8 @@ export const STORAGE_KEYS = {
   TOKEN: '@user_app/token',
   CART: '@user_app/cart',
   CART_COUPON: '@user_app/cart_coupon',
+  SHOP_REG_DRAFT: '@user_app/shop_reg_draft',
+  SHOP_REG_SUBMISSIONS: '@user_app/shop_reg_submissions',
   NEARBY_PREFS: '@user_app/nearby_prefs',
   REVIEWS: '@user_app/reviews',
   ADDRESSES: '@user_app/addresses',

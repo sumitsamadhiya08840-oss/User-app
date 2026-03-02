@@ -29,6 +29,12 @@ import { ProductDetailScreen } from '../screens/ProductDetailScreen';
 import { ProfileScreen } from '../screens/ProfileScreen';
 import { AddEditReviewScreen } from '../screens/AddEditReviewScreen';
 import { SearchScreen } from '../screens/SearchScreen';
+import { SellerOnboardingScreen } from '../screens/SellerOnboardingScreen';
+import { SellerOnboardingSuccessScreen } from '../screens/SellerOnboardingSuccessScreen';
+import { SellerStatusScreen } from '../screens/SellerStatusScreen';
+import { SellerSubmissionDetailsScreen } from '../screens/SellerSubmissionDetailsScreen';
+import { SignupScreen } from '../screens/SignupScreen';
+import { ShopRegistrationScreen } from '../screens/ShopRegistrationScreen';
 import { ShopDetailsScreen } from '../screens/ShopDetailsScreen';
 import { ShopListingScreen } from '../screens/ShopListingScreen';
 import { SplashScreen } from '../screens/SplashScreen';
@@ -44,6 +50,7 @@ function AuthNavigator() {
   return (
     <AuthStack.Navigator screenOptions={{ headerShown: false }}>
       <AuthStack.Screen name="Login" component={LoginScreen} />
+      <AuthStack.Screen name="Signup" component={SignupScreen} />
       <AuthStack.Screen name="OtpVerify" component={OtpVerifyScreen} />
     </AuthStack.Navigator>
   );
@@ -70,6 +77,17 @@ function HomeNavigator() {
       <HomeStack.Screen name="AddEditAddress" component={AddEditAddressScreen} />
       <HomeStack.Screen name="HelpCenter" component={HelpCenterScreen} />
       <HomeStack.Screen name="Notifications" component={NotificationCenterScreen} />
+      <HomeStack.Screen name="ShopRegistration" component={ShopRegistrationScreen} />
+      <HomeStack.Screen name="SellerOnboarding" component={SellerOnboardingScreen} />
+      <HomeStack.Screen
+        name="SellerOnboardingSuccess"
+        component={SellerOnboardingSuccessScreen}
+      />
+      <HomeStack.Screen name="SellerStatus" component={SellerStatusScreen} />
+      <HomeStack.Screen
+        name="SellerSubmissionDetails"
+        component={SellerSubmissionDetailsScreen}
+      />
       <HomeStack.Screen name="MyReviews" component={MyReviewsScreen} />
       <HomeStack.Screen name="AddEditReview" component={AddEditReviewScreen} />
       <HomeStack.Screen name="Checkout" component={CheckoutScreen} />

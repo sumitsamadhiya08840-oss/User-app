@@ -2,6 +2,7 @@ import { ReviewTargetType } from '../types/review';
 
 export type AuthStackParamList = {
   Login: undefined;
+  Signup: undefined;
   OtpVerify: { phone: string };
 };
 
@@ -16,6 +17,11 @@ export type HomeStackParamList = {
   AddEditAddress: { addressId?: string } | undefined;
   HelpCenter: undefined;
   Notifications: undefined;
+  ShopRegistration: undefined;
+  SellerOnboarding: undefined;
+  SellerOnboardingSuccess: { registrationId: string };
+  SellerStatus: undefined;
+  SellerSubmissionDetails: { registrationId: string };
   MyReviews: undefined;
   AddEditReview:
     | {

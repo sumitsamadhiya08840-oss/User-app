@@ -3,11 +3,13 @@ import { useCallback, useMemo, useState } from 'react';
 import { Alert, Image, Pressable, StyleSheet, TextInput, View } from 'react-native';
 
 import { NearbySettingsModal } from '../location/NearbySettingsModal';
+import { useAuth } from '../../contexts/AuthContext';
 import { useCity } from '../../contexts/CityContext';
 import { getNearbyPrefs } from '../../services/location/nearbyService';
 import { getUnreadCount, seedNotificationsIfEmpty } from '../../services/notifications/notificationService';
 import { addRecentSearch } from '../../services/search/recentSearchesService';
 import { SearchSuggestionType, searchAll } from '../../services/search/searchService';
+import { getDraft, getSubmissions } from '../../services/shopRegistration/shopRegistrationService';
 import { NearbyPreferences } from '../../types/location';
 import { AppText } from './AppText';
 
@@ -33,6 +35,7 @@ export function AppHeader({
   onSearchPress,
 }: AppHeaderProps) {
   const navigation = useNavigation<NavigationProp<ParamListBase>>();
+  const { isAuthenticated } = useAuth();
   const { city } = useCity();
   const [localQuery, setLocalQuery] = useState('');
   const [localMode, setLocalMode] = useState<'suggestions' | 'results'>('suggestions');
@@ -43,6 +46,7 @@ export function AppHeader({
     updatedAt: '',
   });
   const [isNearbyModalVisible, setIsNearbyModalVisible] = useState(false);
+  const [hasSellerProgress, setHasSellerProgress] = useState(false);
 
   const isControlled = typeof onSearchChangeText === 'function';
   const activeQuery = (isControlled ? searchValue : localQuery).trim();
@@ -61,9 +65,15 @@ export function AppHeader({
 
   const refreshHeaderMeta = useCallback(async () => {
     await seedNotificationsIfEmpty();
-    const [count, prefs] = await Promise.all([getUnreadCount(), getNearbyPrefs()]);
+    const [count, prefs, draft, submissions] = await Promise.all([
+      getUnreadCount(),
+      getNearbyPrefs(),
+      getDraft(),
+      getSubmissions(),
+    ]);
     setUnreadCount(count);
     setNearbyPrefs(prefs);
+    setHasSellerProgress(Boolean(draft) || submissions.length > 0);
   }, []);
 
   useFocusEffect(
@@ -81,6 +91,19 @@ export function AppHeader({
       navigation.navigate('Home', { screen: 'Notifications' });
     } catch {
       navigation.navigate('Notifications');
+    }
+  };
+
+  const handleSellerPress = () => {
+    if (!isAuthenticated) {
+      Alert.alert('Login required', 'Please login to register your shop');
+      return;
+    }
+
+    try {
+      navigation.navigate('Home', { screen: hasSellerProgress ? 'SellerStatus' : 'ShopRegistration' });
+    } catch {
+      navigation.navigate(hasSellerProgress ? 'SellerStatus' : 'ShopRegistration');
     }
   };
 
@@ -156,6 +179,12 @@ export function AppHeader({
         </View>
 
         <View style={styles.iconActionsRow}>
+          <Pressable style={styles.sellerButton} onPress={handleSellerPress}>
+            <AppText style={styles.sellerButtonText}>
+              {hasSellerProgress ? '🏪 Status' : '🏪 Register'}
+            </AppText>
+          </Pressable>
+
           <Pressable style={styles.iconButton} onPress={() => setIsNearbyModalVisible(true)}>
             <AppText style={styles.iconButtonText}>📍</AppText>
           </Pressable>
@@ -336,7 +365,23 @@ const styles = StyleSheet.create({
   iconActionsRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
+  },
+  sellerButton: {
+    minHeight: 44,
+    minWidth: 44,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#22A55D',
+    backgroundColor: '#ECFDF3',
+    paddingHorizontal: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sellerButtonText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#22A55D',
   },
   iconButton: {
     width: 44,

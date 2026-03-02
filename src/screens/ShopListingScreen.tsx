@@ -115,36 +115,38 @@ function ShopListingContent({
         ) : null}
       </View>
 
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.controlsRow}
-      >
-        {SORT_OPTIONS.map((option) => (
+      <View style={styles.controlsWrap}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.controlsRow}
+        >
+          {SORT_OPTIONS.map((option) => (
+            <Chip
+              key={option.key}
+              label={option.label}
+              variant={sort === option.key ? 'selected' : 'default'}
+              onPress={() => setSort(option.key)}
+            />
+          ))}
+
           <Chip
-            key={option.key}
-            label={option.label}
-            variant={sort === option.key ? 'selected' : 'default'}
-            onPress={() => setSort(option.key)}
+            label="Open now"
+            variant={filters.openNow ? 'selected' : 'default'}
+            onPress={() => updateFilter('openNow', !filters.openNow)}
           />
-        ))}
 
-        <Chip
-          label="Open now"
-          variant={filters.openNow ? 'selected' : 'default'}
-          onPress={() => updateFilter('openNow', !filters.openNow)}
-        />
+          <Chip
+            label="Verified"
+            variant={filters.verified ? 'selected' : 'default'}
+            onPress={() => updateFilter('verified', !filters.verified)}
+          />
 
-        <Chip
-          label="Verified"
-          variant={filters.verified ? 'selected' : 'default'}
-          onPress={() => updateFilter('verified', !filters.verified)}
-        />
-
-        <Pressable style={styles.filtersButton} onPress={() => setIsFilterModalOpen(true)}>
-          <AppText style={styles.filtersButtonText}>Filters</AppText>
-        </Pressable>
-      </ScrollView>
+          <Pressable style={styles.filtersButton} onPress={() => setIsFilterModalOpen(true)}>
+            <AppText style={styles.filtersButtonText}>Filters</AppText>
+          </Pressable>
+        </ScrollView>
+      </View>
 
       {shops.length === 0 ? (
         <View style={styles.emptyWrap}>
@@ -160,6 +162,7 @@ function ShopListingContent({
           data={shops}
           numColumns={2}
           keyExtractor={(item) => item.id}
+          style={styles.list}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.listContent}
           columnWrapperStyle={styles.columnWrapper}
@@ -331,9 +334,17 @@ const styles = StyleSheet.create({
     color: '#22A55D',
   },
   controlsRow: {
-    paddingBottom: 12,
+    paddingVertical: 2,
     paddingRight: 8,
     gap: 8,
+  },
+  controlsWrap: {
+    zIndex: 10,
+    elevation: 4,
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+    marginBottom: 8,
   },
   filtersButton: {
     minHeight: 36,
@@ -350,7 +361,11 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#374151',
   },
+  list: {
+    flex: 1,
+  },
   listContent: {
+    paddingTop: 4,
     paddingBottom: 16,
   },
   columnWrapper: {
